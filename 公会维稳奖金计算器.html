@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh" id="htmlRoot">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Party Star 公会维稳奖金计算器</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;padding:16px;background:#f2f5fa;margin:0}
+.topbar{display:flex;justify-content:flex-end;max-width:560px;margin:12px auto 0}
+.langbtn{display:flex;gap:6px;background:#fff;border:1.5px solid #d9e1ec;border-radius:20px;padding:4px;box-shadow:0 2px 8px #0001}
+.langbtn span{padding:6px 14px;border-radius:16px;font-size:14px;cursor:pointer;color:#666;font-weight:600;user-select:none}
+.langbtn span.on{background:#1677ff;color:#fff}
+.box{background:#fff;padding:20px;border-radius:14px;max-width:560px;margin:8px auto 24px;box-shadow:0 4px 20px #0001}
+h3{margin:0 0 2px;font-size:18px}
+.sub{color:#999;font-size:13px;margin-bottom:16px}
+label{font-size:14px;color:#555;display:block;margin:10px 0 4px}
+input{padding:14px;width:100%;font-size:18px;border:1.5px solid #d9e1ec;border-radius:10px;outline:none}
+input:focus{border-color:#1677ff}
+button.main{width:100%;padding:15px;margin-top:16px;background:#1677ff;color:#fff;border:0;border-radius:10px;font-size:17px;font-weight:600;cursor:pointer}
+button.main:active{background:#0958d9;transform:scale(.99)}
+#loginMsg{margin-top:10px;font-size:14px;min-height:20px}
+.card{background:#fafcff;border:1.5px solid #d6e4ff;border-radius:12px;padding:16px;margin-top:8px}
+.who{display:inline-block;background:#e6f4ff;color:#1677ff;font-size:13px;padding:3px 10px;border-radius:20px;margin-bottom:10px}
+.money{font-size:34px;font-weight:800;color:#1677ff;line-height:1.2}
+.money.green{color:#16a34a}
+.row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px dashed #eef2f7;font-size:15px}
+.row:last-child{border:0}
+.key{color:#666}
+.val{font-weight:700;color:#222}
+.hl{background:#fff7e6;border:1.5px solid #ffd591;border-radius:10px;padding:12px;margin-top:12px}
+.hl b{color:#fa8c16;font-size:17px}
+.greenbox{background:#f6ffed;border:1.5px solid #b7eb8f;border-radius:10px;padding:12px;margin-top:12px}
+.btn2{width:100%;padding:14px;margin-top:14px;background:#16a34a;color:#fff;border:0;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer}
+.err{color:#ff4d4f}.ok{color:#16a34a}
+.modal{position:fixed;inset:0;background:#0004;display:none;align-items:center;justify-content:center;z-index:9;padding:16px}
+.modal .panel{background:#fff;padding:20px;border-radius:14px;width:100%;max-width:380px}
+.modal input{font-size:18px}
+.bar{height:10px;background:#eee;border-radius:6px;margin:10px 0;overflow:hidden}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,#91d5ff,#1677ff)}
+.tip0{font-size:15px;color:#fa8c16;font-weight:600}
+.small{font-size:12px;color:#aaa;margin-top:14px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="langbtn">
+    <span id="btnZh" class="on" onclick="setLang('zh')">中文</span>
+    <span id="btnTr" onclick="setLang('tr')">Türkçe</span>
+  </div>
+</div>
+
+<div class="box" id="app">
+  <h3 id="t_title"></h3>
+  <div class="sub" id="t_sub"></div>
+  <div id="login">
+    <label id="t_labUid"></label>
+    <input id="uid" inputmode="numeric" placeholder="örn. 821416419">
+    <label id="t_labPwd"></label>
+    <input id="pwd" inputmode="numeric" maxlength="4" placeholder="1234">
+    <button class="main" id="t_btnLogin" type="button"></button>
+    <div id="loginMsg"></div>
+    <div class="small" id="t_tip1"></div>
+  </div>
+  <div id="main" style="display:none">
+    <div class="card" id="out"></div>
+    <button class="btn2" id="calcBtn" type="button"></button>
+  </div>
+</div>
+
+<div class="modal" id="calcModal">
+  <div class="panel">
+    <h4 id="t_calcTitle" style="margin:0 0 8px;font-size:17px"></h4>
+    <div id="calcUidLabel" style="color:#888;font-size:13px;margin-bottom:6px"></div>
+    <label id="t_labPerf"></label>
+    <input id="mM" inputmode="numeric" placeholder="örn. 19215000">
+    <div style="margin-top:14px;display:flex;gap:10px">
+      <button id="t_btnCancel" type="button" style="flex:1;padding:13px;background:#fff;color:#1677ff;border:1.5px solid #1677ff;border-radius:10px;font-size:15px;cursor:pointer">取消</button>
+      <button id="t_btnGo" type="button" style="flex:2;padding:13px;background:#1677ff;color:#fff;border:0;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer">马上算</button>
+    </div>
+    <div id="calcRes" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<script>
+var LANG="zh";
+var curUid=null, curBase=0;
+
+var I18N={
+ zh:{
+  title:"💰 Party Star 公会维稳奖金计算器",
+  sub:"输入你的公会ID + 4位密码，只看自己的考核数据和奖金",
+  labUid:"公会 ID", labPwd:"4位查询密码",
+  btnLogin:"查看我的考核数据和奖金",
+  tip1:"忘记密码找运营。本页只显示你自己的数据，看不到其他公会。",
+  calcTitle:"🧮 算这个月奖金", labPerf:"这个月业绩值（纯数字）",
+  btnCancel:"取消", btnGo:"马上算",
+  btnCalc:"算我这个月能拿多少钱",
+  baseLabel:"考核基数",
+  startLine:"✅ 开始拿奖（最低做到）",
+  line10:"🎯 拿10%档（做到）",
+  capLine:"🔒 封顶线（做到这以上不加钱）",
+  diff10:function(d){return "👉 从拿奖到进10%档，还差 <b>"+d+"</b>";},
+  capMax:"封顶最多每月能拿",
+  capNote:function(c){return "做到 "+c+" 就封顶，再多也不加";},
+  noBase:"⚠️ 本季不参与维稳奖（无考核基数）",
+  errEmpty:"❌ 两个都填一下",
+  errFail:"❌ ID或密码不对，找运营核对",
+  okOpen:"✅ 对啦，正在打开…",
+  errPerf:"❌ 填一下这个月业绩",
+  neg:function(d){return "😢 这个月还没正增长，暂时没奖<br>距开始拿奖还差 <b>"+d+"</b>";},
+  t5:function(d){return "✅ 已拿5%档<br>再做到 <b>"+d+"</b> 就进10%档，钱翻倍";},
+  t10:function(d){return "✅ 已拿10%档<br>距封顶还差 <b style='color:#16a34a'>"+d+"</b>，到了就封顶";},
+  tCap:"✅ 已封顶拿满，再多也不加钱啦",
+  getLabel:"这个月你能拿",
+  usd:"USD",
+  grow:function(g,t){return "本月增长 "+g+"% ｜ "+t;},
+  tier5:"5%档", tier10:"10%档", tierCap:"封顶拿满",
+  who:function(u){return "本公会 · "+u;},
+  calcLabel:function(u,b){return "公会 "+u+" ｜ 考核基数 "+b;}
+ },
+ tr:{
+  title:"💰 Party Star Ajans Stabilite Ödül Hesaplayıcı",
+  sub:"Ajans ID + 4 haneli şifreni gir, sadece kendi verini ve ödülünü gör",
+  labUid:"Ajans ID", labPwd:"4 Haneli Şifre",
+  btnLogin:"Verilerimi ve Ödülümü Göster",
+  tip1:"Şifreni unuttuysan operasyona sor. Bu sayfa sadece senin verini gösterir.",
+  calcTitle:"🧮 Bu Ayki Ödülü Hesapla",
+  labPerf:"Bu ayki performans (sadece sayı)",
+  btnCancel:"İptal", btnGo:"Hesapla",
+  btnCalc:"Bu ay ne kadar alacağımı hesapla",
+  baseLabel:"Hedef Taban",
+  startLine:"✅ Ödül başlangıcı (en az)",
+  line10:"🎯 %10 dilimi (ulaşınca)",
+  capLine:"🔒 Tavan (bundan sonra artmaz)",
+  diff10:function(d){return "👉 %10 dilimine girmek için <b>"+d+"</b> eksik";},
+  capMax:"Ayda maksimum alabileceğin",
+  capNote:function(c){return c+" yapınca tavan, daha fazlası eklenmez";},
+  noBase:"⚠️ Bu dönem ödüle katılmıyor (taban yok)",
+  errEmpty:"❌ İkisini de doldur",
+  errFail:"❌ Ajans ID veya şifre yanlış, operasyona sor",
+  okOpen:"✅ Doğru, açılıyor…",
+  errPerf:"❌ Bu ayki performansı gir",
+  neg:function(d){return "😢 Bu ay pozitif büyüme yok, ödül yok<br>Ödüle başlamak için <b>"+d+"</b> eksik";},
+  t5:function(d){return "✅ %5 dilimindesin<br><b>"+d+"</b> daha yapınca %10 dilimi, ödül 2 katına çıkar";},
+  t10:function(d){return "✅ %10 dilimindesin<br>Tavana <b style='color:#16a34a'>"+d+"</b> kaldı, ulaşınca sabitlenir";},
+  tCap:"✅ Tavan doldu, daha fazlası eklenmez",
+  getLabel:"Bu ay alacağın tutar",
+  usd:"USD",
+  grow:function(g,t){return "Büyüme %"+g+" ｜ "+t;},
+  tier5:"%5 dilimi", tier10:"%10 dilimi", tierCap:"Tavan",
+  who:function(u){return "Bu Ajans · "+u;},
+  calcLabel:function(u,b){return "Ajans "+u+" ｜ Taban "+b;}
+ }
+};
+
+var DATA={
+821416419:[18300000,"3938"],819008505:[15000000,"4672"],818464126:[13900000,"4588"],
+820952637:[10100000,"8165"],820816401:[7700000,"7766"],822372606:[6900000,"8101"],
+818210039:[5200000,"2289"],818755823:[4600000,"1817"],820816222:[3900000,"5682"],
+817344686:[3300000,"4165"],818517365:[3100000,"7249"],822386306:[2900000,"4973"],
+817006482:[2700000,"5890"],820690760:[1900000,"8655"],820989403:[1800000,"7085"],
+821945297:[900000,"9090"],820299127:[900000,"5334"],816743950:[900000,"6905"],
+818540502:[800000,"1161"],821464626:[800000,"7771"],821749070:[700000,"4781"],
+822753183:[500000,"4735"],822775240:[500000,"9913"],
+818175097:[0,"9376"],821744125:[0,"1713"],818912472:[0,"2825"],818228725:[0,"5512"],
+816516971:[0,"1031"],821421451:[0,"3025"],820684158:[0,"9956"],821492531:[0,"3857"],
+820375064:[0,"2993"],821517389:[0,"4825"],820429940:[0,"1088"],820643001:[0,"7962"],
+818561791:[0,"1411"],818204610:[0,"3687"],820362892:[0,"8265"],822079322:[0,"9539"],
+817663391:[0,"2805"],822715545:[0,"5714"],818693352:[0,"2514"],818175756:[0,"7057"],
+821039969:[0,"9577"],819479502:[0,"1847"],820281417:[0,"1903"],818328579:[0,"7139"],
+820665612:[0,"8054"],821452474:[0,"7749"],819294276:[0,"5978"],821355475:[0,"3506"],
+818640473:[0,"6863"],822769973:[0,"9721"],819374573:[0,"9544"],822784209:[0,"2189"],
+822785804:[0,"7441"],820716505:[0,"8394"],818629393:[0,"6677"],821325423:[0,"3112"],
+822773616:[0,"9549"],822424769:[0,"1621"],820276766:[0,"7397"],820438004:[0,"1389"],
+822793636:[0,"5963"],820986207:[0,"2053"],822797315:[0,"6664"],819837871:[0,"5838"],
+822801361:[0,"4896"],818648489:[0,"8403"]
+};
+
+function fmt(n){
+  if(LANG==="tr"){return Number(n).toLocaleString("tr-TR");}
+  return Number(n).toLocaleString("en-US");
+}
+
+function setLang(l){
+  LANG=l;
+  document.getElementById("htmlRoot").setAttribute("lang", l==="zh"?"zh":"tr");
+  document.getElementById("btnZh").className = (l==="zh"?"on":"");
+  document.getElementById("btnTr").className = (l==="tr"?"on":"");
+  var T=I18N[l];
+  document.getElementById("t_title").innerText=T.title;
+  document.getElementById("t_sub").innerText=T.sub;
+  document.getElementById("t_labUid").innerText=T.labUid;
+  document.getElementById("t_labPwd").innerText=T.labPwd;
+  document.getElementById("t_btnLogin").innerText=T.btnLogin;
+  document.getElementById("t_tip1").innerText=T.tip1;
+  document.getElementById("t_calcTitle").innerText=T.calcTitle;
+  document.getElementById("t_labPerf").innerText=T.labPerf;
+  document.getElementById("t_btnCancel").innerText=T.btnCancel;
+  document.getElementById("t_btnGo").innerText=T.btnGo;
+  document.getElementById("calcBtn").innerText=T.btnCalc;
+  if(document.getElementById("main").style.display!=="none"){renderBase();}
+  if(document.getElementById("calcModal").style.display==="flex"){
+    document.getElementById("calcUidLabel").innerText=I18N[LANG].calcLabel(curUid, fmt(curBase));
+  }
+}
+
+function unlock(){
+  var T=I18N[LANG];
+  var uid=document.getElementById("uid").value.trim();
+  var pwd=document.getElementById("pwd").value.trim();
+  var msg=document.getElementById("loginMsg");
+  if(!uid||!pwd){msg.innerHTML="<span class='err'>"+T.errEmpty+"</span>";return;}
+  var row=DATA[uid];
+  if(!row||row[1]!==pwd){msg.innerHTML="<span class='err'>"+T.errFail+"</span>";return;}
+  curUid=uid;curBase=row[0];
+  msg.innerHTML="<span class='ok'>"+T.okOpen+"</span>";
+  document.getElementById("login").style.display="none";
+  document.getElementById("main").style.display="block";
+  renderBase();
+}
+
+function renderBase(){
+  var T=I18N[LANG];
+  var b=curBase;
+  if(b===0){
+    document.getElementById("out").innerHTML=
+      "<span class='who'>"+T.who(curUid)+"</span>"+
+      "<div class='row'><span class='key'>"+T.baseLabel+"</span><span class='val'>0</span></div>"+
+      "<div class='hl' style='background:#fff7e6'><span class='tip0'>"+T.noBase+"</span></div>";
+    document.getElementById("calcBtn").style.display="none";
+    return;
+  }
+  var lineStart=b+1, line10=Math.round(b*1.05), lineCap=Math.round(b*1.1);
+  var diffTo10=line10-lineStart;
+  var capBonus=(lineCap/970 * 0.1);
+  document.getElementById("out").innerHTML=
+    "<span class='who'>"+T.who(curUid)+"</span>"+
+    "<div style='margin:6px 0 2px;color:#666;font-size:14px'>"+T.baseLabel+"</div>"+
+    "<div class='money'>"+fmt(b)+"</div>"+
+    "<div class='greenbox' style='margin-top:14px'>"+
+      "<div class='row'><span class='key'>"+T.startLine+"</span><span class='val'>"+fmt(lineStart)+"</span></div>"+
+      "<div class='row'><span class='key'>"+T.line10+"</span><span class='val'>"+fmt(line10)+"</span></div>"+
+      "<div class='row'><span class='key'>"+T.capLine+"</span><span class='val'>"+fmt(lineCap)+"</span></div>"+
+    "</div>"+
+    "<div class='hl'>"+T.diff10(fmt(diffTo10))+"</div>"+
+    "<div style='margin-top:12px'>"+
+      "<div style='color:#666;font-size:14px'>"+T.capMax+"</div>"+
+      "<div class='money green'>$"+capBonus.toFixed(2)+" "+T.usd+"</div>"+
+      "<div style='font-size:12px;color:#999'>"+T.capNote(fmt(lineCap))+"</div>"+
+    "</div>";
+  document.getElementById("calcUidLabel").innerText=T.calcLabel(curUid, fmt(b));
+}
+
+function openCalc(){
+  document.getElementById("mM").value="";
+  document.getElementById("calcRes").innerHTML="";
+  document.getElementById("calcModal").style.display="flex";
+}
+function closeCalc(){document.getElementById("calcModal").style.display="none";}
+
+function calcBonus(){
+  var T=I18N[LANG];
+  var m=+document.getElementById("mM").value;
+  var res=document.getElementById("calcRes");
+  var base=curBase;
+  if(!m){res.innerHTML="<span class='err'>"+T.errPerf+"</span>";return;}
+  var grow=(m-base)/base;
+  var line10=base*1.05, cap=base*1.1;
+  var pct=Math.min(Math.max(grow/0.1,0),1)*100;
+  if(grow<0){
+    res.innerHTML="<div class='hl'>"+T.neg(fmt(Math.max(1,Math.ceil(base+1-m))))+"</div>";
+    return;
+  }
+  var rate,tier,calcM,bonus;
+  if(grow<0.05){rate=0.05;tier=T.tier5;calcM=m;}
+  else if(grow<=0.1){rate=0.1;tier=T.tier10;calcM=m;}
+  else{rate=0.1;tier=T.tierCap;calcM=cap;}
+  bonus=calcM/970*rate;
+  var extra;
+  if(grow<0.05){extra="<div class='hl'>"+T.t5(fmt(Math.ceil(line10-m)))+"</div>";}
+  else if(grow<=0.1){extra="<div class='greenbox'>"+T.t10(fmt(Math.max(0,Math.ceil(cap-m))))+"</div>";}
+  else{extra="<div class='greenbox'>"+T.tCap+"</div>";}
+  res.innerHTML=
+    "<div style='color:#666;font-size:14px'>"+T.getLabel+"</div>"+
+    "<div class='money'>$"+bonus.toFixed(2)+" <span style='font-size:14px;color:#999'>"+T.usd+"</span></div>"+
+    "<div style='font-size:13px;color:#666;margin-top:2px'>"+T.grow((grow*100).toFixed(2),tier)+"</div>"+
+    "<div class='bar'><i style='width:"+pct+"%'></i></div>"+extra;
+}
+
+function bindSafe(){
+  document.getElementById("t_btnLogin").addEventListener("click", unlock);
+  document.getElementById("pwd").addEventListener("keydown", function(e){if(e.key==="Enter")unlock();});
+  document.getElementById("uid").addEventListener("keydown", function(e){if(e.key==="Enter")unlock();});
+  document.getElementById("t_btnGo").addEventListener("click", calcBonus);
+  document.getElementById("t_btnCancel").addEventListener("click", closeCalc);
+  document.getElementById("calcBtn").addEventListener("click", openCalc);
+}
+
+setLang("zh");
+if(document.readyState!=="loading"){bindSafe();}
+else{document.addEventListener("DOMContentLoaded", bindSafe);}
+</script>
+</body>
+</html>
